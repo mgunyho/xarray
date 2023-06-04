@@ -4580,7 +4580,11 @@ class TestDataArray:
         # nonsense function to make the optimization fail
         def line(x, a, b):
             if a > 10:
-                return 0
+                # note: here we have to return something that depends on a or
+                # b, so that the function has a gradient and scipy determines
+                # that the optimization can't succeed if the no. of function
+                # calls is limited
+                return a
             return a * x + b
 
         da = DataArray(
@@ -4599,16 +4603,20 @@ class TestDataArray:
             da.curvefit(
                 coords="x",
                 func=line,
-                # limit maximum number of calls so the optimization fails
-                kwargs=dict(maxfev=5),
+                # allow only single function call so that the optimization
+                # fails with this initial guess
+                kwargs=dict(maxfev=1),
+                p0={"a": DataArray([2, 100], coords={"i": [1, 2]})},
             ).compute()  # have to compute to raise the error
 
         fit = da.curvefit(
             coords="x",
             func=line,
             errors="ignore",
-            # limit maximum number of calls so the optimization fails
-            kwargs=dict(maxfev=5),
+            # allow only single function call so that the optimization
+            # fails with this initial guess
+            kwargs=dict(maxfev=1),
+            p0={"a": DataArray([2, 100], coords={"i": [1, 2]})},
         ).compute()
 
         assert_allclose(fit.curvefit_coefficients, expected)
